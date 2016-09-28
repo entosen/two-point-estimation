@@ -39,9 +39,11 @@ Dim taskTableRight As Long  ' タスクのデータテーブル部分の右端カラム
 Sub run()
     Init
     DebugInit
-    CalcLineNum
-    CalcLevel
-    CalcChildren
+    
+    Check
+    ' CalcLineNum
+    ' CalcLevel
+    ' CalcChildren
     
     ' ''' test
     ' ''' CalcPoints 1
@@ -112,6 +114,76 @@ Sub DebugInit()
     
     Debug.Print "dataTable = " & dataTable.Address
 End Sub
+
+
+' 意図せず入力したものを消してしまうことを避けるために、
+' 計算値が入るセルは編集不可状態になっていることを確認する
+Sub Check()
+    Dim messages As New Collection
+    
+    ' 計算値が入るカラムの Locked の状態をチェックする
+    If Not isColumnAllLocked(cLineNum) Then messages.Add "行番カラムがLockedでない"
+    If Not isColumnAllLocked(cLevel) Then messages.Add "階層カラムがLockedでない"
+    If Not isColumnAllLocked(cChildren) Then messages.Add "子カラムがLockedでない"
+
+    Dim lvl As Integer
+    For lvl = 1 To MaxLevel
+        If Not isColumnAllLocked(cLevelPointBlocks(lvl) + offsetLower) Then
+           messages.Add "階層" & lvl & "の下値カラムがLockedでない"
+        End If
+        If Not isColumnAllLocked(cLevelPointBlocks(lvl) + offsetUpper) Then
+            messages.Add "階層" & lvl & "の下値カラムがLockedでない"
+        End If
+        If Not isColumnAllLocked(cLevelPointBlocks(lvl) + offsetActual) Then
+          messages.Add "階層" & lvl & "の仮値カラムがLockedでない"
+        End If
+        If Not isColumnAllLocked(cLevelPointBlocks(lvl) + offsetConsumed) Then
+            messages.Add "階層" & lvl & "の消費値カラムがLockedでない"
+        End If
+    Next lvl
+    
+    ' シートが保護状態かどうかをチェックする
+    If Not isSheetProtected Then
+        messages.Add "シートが保護状態になっていない"
+    End If
+
+
+    If messages.Count > 0 Then
+        Dim concated As String
+        concated = "下記の理由により処理を中止します！" & Chr(10)
+        
+        Dim m As Variant
+        For Each m In messages
+            concated = concated & CStr(m) & Chr(10)
+        Next m
+        
+        MsgBox concated
+    End If
+
+End Sub
+
+' dataTable の指定したカラムのセルが、全て Locked 状態になっているかを返す
+Function isColumnAllLocked(c As Long) As Boolean
+
+    Dim status As Variant
+    status = dataTable.Columns(c).Locked
+    ' Debug.Print "status = " & TypeName(status)
+    
+    If IsNull(status) Then
+        isColumnAllLocked = False
+    Else
+        isColumnAllLocked = CBool(status)
+    End If
+
+End Function
+
+' シートが保護状態かどうかを返す
+Function isSheetProtected() As Boolean
+    isSheetProtected = taskWorksheet.ProtectContents
+End Function
+
+
+
 
 
 Function RangeLevelPointBlock(line As Long, level As Long) As Range
