@@ -4,9 +4,9 @@ Option Base 1   ' 配列の先頭を1からに
 
 Dim taskWorksheet As Worksheet  ' タスク一覧のワークシート
 
-Const MaxLevel As Long = 6
+Const MaxLevel As Long = 10  ' 階層深さ
 
-' ストーリーポイントは、下限、上限、実際値、消費値 の4点セット。そのオフセット
+' ストーリーポイントは、下値、上値、仮値(実際値)、消費値 の4点セット。そのオフセット
 Const PointBlockLen As Long = 4
 Const offsetLower = 0
 Const offsetUpper = 1
@@ -17,20 +17,23 @@ Const idxUpper = 2
 Const idxActual = 3
 Const idxConsumed = 4
 
-Dim cLineNum As Long
-Dim cLevel As Long
-Dim cChildren As Long
-Dim cTasks(1 To MaxLevel) As Long
-Dim cLevelPointBlocks(1 To MaxLevel) As Long
-Dim cInputPointBlock As Long
+Dim dataTable As Range   ' データテーブル部分のRange。下記カラム番号、行番値、子値はこのRange基準での番号
 
-Dim taskHeaderRow As Long  ' タスク一覧シートのヘッダ行番号。この直後からテーブル
+Dim cLineNum As Long                           ' 行番のカラム番号 (計算カラム)
+Dim cLevel As Long                             ' 階層のカラム番号 (計算カラム)
+Dim cChildren As Long                          ' 子のカラム番号 (計算カラム)
+Dim cTasks(1 To MaxLevel) As Long              ' タスク名入力欄のカラム番号 (入力カラム)
+Dim cAssignee As Long                          ' 担当者入力欄のカラム番号 (入力カラム)
+Dim cLevelPointBlocks(1 To MaxLevel) As Long   ' レベルのポイントのカラム番号 (計算カラム)
+Dim cInputPointBlock As Long                   ' 入力ポイント欄のカラム番号 (入力カラム)
+
+Dim taskHeaderRow As Long  ' タスク一覧シートのヘッダ行番号。この直後からデータテーブル
 Dim taskTableTop As Long   ' タスクのデータテーブル部分の先頭行
 Dim taskTableBottom As Long ' タスクのデータテーブルの末尾行
 Dim taskTableLeft As Long  ' タスクのデータテーブル部分の左端カラム
 Dim taskTableRight As Long  ' タスクのデータテーブル部分の右端カラム
 
-Dim dataTable As Range   ' データテーブル部分のRange
+
 
 
 Sub run()
@@ -40,8 +43,8 @@ Sub run()
     CalcLevel
     CalcChildren
     
-    ' test
-    ' CalcPoints 1
+    ' ''' test
+    ' ''' CalcPoints 1
     CalcPointsTopLevel
     
 End Sub
@@ -60,6 +63,7 @@ Sub Init()
     For level = 1 To MaxLevel
         cTasks(level) = c: c = c + 1
     Next level
+    cAssignee = c: c = c + 1
     
     For level = 1 To MaxLevel
         cLevelPointBlocks(level) = c + PointBlockLen * (level - 1)
@@ -94,6 +98,7 @@ Sub DebugInit()
     For level = 1 To MaxLevel
         Debug.Print "cTasks(" & level & ") = " & cTasks(level)
     Next level
+    Debug.Print "cAssignee = " & cAssignee
     For level = 1 To MaxLevel
         Debug.Print "cLevelPointBlocks(" & level & ") = " & cLevelPointBlocks(level)
     Next level
@@ -367,3 +372,4 @@ Sub test()
     Debug.Print block(idxConsumed)
 
 End Sub
+
