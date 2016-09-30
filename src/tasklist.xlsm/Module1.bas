@@ -37,6 +37,8 @@ Dim taskTableRight As Long  ' タスクのデータテーブル部分の右端カラム
 
 
 Sub run()
+    Application.ScreenUpdating = False   ' 高速化のため
+    
     Init
     DebugInit
     
