@@ -42,8 +42,8 @@ Sub run()
     
     CheckOrElseExit
     protectWithPresentAllows taskWorksheet, UserInterfaceOnly:=True
-
-
+    
+    clearCalculationArea
     CalcLineNum
     CalcLevel
     CalcChildren
@@ -213,6 +213,19 @@ Sub protectWithPresentAllows( _
 End Sub
 
 
+' ŒvŽZ—Ìˆæ‚ðƒNƒŠƒA‚·‚é
+Sub clearCalculationArea()
+    dataTable.Columns(cLineNum).ClearContents
+    dataTable.Columns(cLevel).ClearContents
+    dataTable.Columns(cChildren).ClearContents
+    dataTable.Columns(cChildren).ClearContents
+
+    Dim c As Integer
+    For c = cLevelPointBlocks(1) To cLevelPointBlocks(MaxLevel) + offsetConsumed
+        dataTable.Columns(c).ClearContents
+    Next c
+
+End Sub
 
 Function RangeLevelPointBlock(line As Long, level As Long) As Range
     Set RangeLevelPointBlock = _
