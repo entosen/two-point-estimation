@@ -264,7 +264,7 @@ Sub CalcLevel()
     For line = 1 To dataTable.Rows.Count
         
         Dim level As Long
-        For level = 1 To 6
+        For level = 1 To MaxLevel
             If dataTable.Cells(line, cTasks(level)).Value <> "" Then Exit For
         Next level
         
