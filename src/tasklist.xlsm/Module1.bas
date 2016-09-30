@@ -40,10 +40,13 @@ Sub run()
     Init
     DebugInit
     
-    Check
-    ' CalcLineNum
-    ' CalcLevel
-    ' CalcChildren
+    CheckOrElseExit
+    protectWithPresentAllows taskWorksheet, UserInterfaceOnly:=True
+
+
+    CalcLineNum
+    CalcLevel
+    CalcChildren
     
     ' ''' test
     ' ''' CalcPoints 1
@@ -118,7 +121,7 @@ End Sub
 
 ' 意図せず入力したものを消してしまうことを避けるために、
 ' 計算値が入るセルは編集不可状態になっていることを確認する
-Sub Check()
+Sub CheckOrElseExit()
     Dim messages As New Collection
     
     ' 計算値が入るカラムの Locked の状態をチェックする
@@ -158,6 +161,7 @@ Sub Check()
         Next m
         
         MsgBox concated
+        End
     End If
 
 End Sub
@@ -183,6 +187,30 @@ Function isSheetProtected() As Boolean
 End Function
 
 
+
+' 許可操作を保持したまま、Protect操作をする
+Sub protectWithPresentAllows( _
+    sheet As Worksheet, _
+    Optional UserInterfaceOnly As Boolean = False)
+
+    Dim p As Object
+    Set p = sheet.Protection
+
+    sheet.Protect _
+        UserInterfaceOnly:=UserInterfaceOnly, _
+        AllowFormattingCells:=p.AllowFormattingCells, _
+        AllowFormattingColumns:=p.AllowFormattingColumns, _
+        AllowFormattingRows:=p.AllowFormattingRows, _
+        AllowInsertingColumns:=p.AllowInsertingColumns, _
+        AllowInsertingRows:=p.AllowInsertingRows, _
+        AllowInsertingHyperlinks:=p.AllowInsertingHyperlinks, _
+        AllowDeletingColumns:=p.AllowDeletingColumns, _
+        AllowDeletingRows:=p.AllowDeletingRows, _
+        AllowSorting:=p.AllowSorting, _
+        AllowFiltering:=p.AllowFiltering, _
+        AllowUsingPivotTables:=p.AllowUsingPivotTables
+
+End Sub
 
 
 
