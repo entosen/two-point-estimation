@@ -433,11 +433,16 @@ Sub CalcPoints(thisLine As Long)
             calcedLower, calcedUpper, calcedActual, calcedConsumed
 
     Else
-        ' こどもがいる場合
+        ' 子どもがいる場合
         Dim childrenArray() As String
         Dim childLine As Variant
         Dim sumPoint(1 To PointBlockLen) As Variant
         Dim sumRange As Range
+        
+        Dim sum_of_delta_lower_square As Variant
+        Dim sum_of_delta_upper_square As Variant
+        Dim sum_of_middle As Variant
+        Dim sum_of_consumed As Variant
         
         childrenArray = Split(thisChildren, ",")
         For Each childLine In childrenArray
@@ -448,14 +453,24 @@ Sub CalcPoints(thisLine As Long)
             Set childPointRange = RangeLevelPointBlock(CLng(childLine), CLng(thisLevel) + 1)
             childPoint = GetPointBlock2(childPointRange)
             
-            ' 子どもの合計値を計算
-            sumPoint(idxLower) = sumPoint(idxLower) + childPoint(idxLower)
-            sumPoint(idxUpper) = sumPoint(idxUpper) + childPoint(idxUpper)
-            sumPoint(idxActual) = sumPoint(idxActual) + childPoint(idxActual)
-            sumPoint(idxConsumed) = sumPoint(idxConsumed) + childPoint(idxConsumed)
-            
+            ' ' 子どもの合計値を計算 (単純和)
+            ' sumPoint(idxLower) = sumPoint(idxLower) + childPoint(idxLower)
+            ' sumPoint(idxUpper) = sumPoint(idxUpper) + childPoint(idxUpper)
+            ' sumPoint(idxActual) = sumPoint(idxActual) + childPoint(idxActual)
+            ' sumPoint(idxConsumed) = sumPoint(idxConsumed) + childPoint(idxConsumed)
+
+            ' 子どもの合計値を計算 (２乗和平方根法:SRSS法:Square Root Sum of Squares)
+            sum_of_delta_lower_square = sum_of_delta_lower_square + (childPoint(idxActual) - childPoint(idxLower)) ^ 2
+            sum_of_delta_upper_square = sum_of_delta_upper_square + (childPoint(idxUpper) - childPoint(idxActual)) ^ 2
+            sum_of_middle = sum_of_middle + childPoint(idxActual)
+            sum_of_consumed = sum_of_consumed + childPoint(idxConsumed)
             
         Next childLine
+        
+        sumPoint(idxLower) = sum_of_middle - Sqr(sum_of_delta_lower_square)
+        sumPoint(idxUpper) = sum_of_middle + Sqr(sum_of_delta_upper_square)
+        sumPoint(idxActual) = sum_of_middle
+        sumPoint(idxConsumed) = sum_of_consumed
         
         ' 子どもの合計値を書き込み
         Set sumRange = RangeLevelPointBlock(CLng(thisLine), CLng(thisLevel))
