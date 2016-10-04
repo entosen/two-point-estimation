@@ -392,7 +392,9 @@ Sub SetPointBlock2(r As Range, point() As Variant)
     r.Item(idxConsumed).Value = point(idxConsumed)
 End Sub
 
-Sub CalcPoints(thisLine As Long)
+' 指定行から、子要素について再帰的に計算し、最終的に指定行の値をセルにセット、
+' 関数の返り値として返す。
+Function CalcPoints(thisLine As Long) As Variant
     
     Dim thisLevel As Variant
     Dim thisChildren As Variant
@@ -400,85 +402,109 @@ Sub CalcPoints(thisLine As Long)
     thisLevel = dataTable.Cells(thisLine, cLevel).Value
     thisChildren = dataTable.Cells(thisLine, cChildren).Value
     
+    Dim inputPoint() As Variant
+    Dim calcedPoint() As Variant
+    
+    inputPoint = GetPointBlock2(RangeInputPointBlock(thisLine))
+    
+    
     If thisChildren = "" Then
         ' 子どもがいない。その場合、自身のInput値から作れば良い。
-        Dim inputLower As Variant
-        Dim inputUpper As Variant
-        Dim inputActual As Variant
-        Dim inputConsumed As Variant
         
-        Dim calcedLower As Variant
-        Dim calcedUpper As Variant
-        Dim calcedActual As Variant
-        Dim calcedConsumed As Variant
+        calcedPoint = CalcPointLogicNoChild(inputPoint)
         
-
-        GetPointBlock _
-            RangeInputPointBlock(thisLine), _
-            inputLower, inputUpper, inputActual, inputConsumed
-        
-        If inputActual = "" Then
-            calcedLower = inputLower
-            calcedUpper = inputUpper
-            calcedActual = (inputLower + inputUpper) / 2
-        Else
-            calcedLower = inputActual
-            calcedUpper = inputActual
-            calcedActual = inputActual
-        End If
-        calcedConsumed = inputConsumed
-        
-        SetPointBlock _
-            RangeLevelPointBlock(thisLine, CLng(thisLevel)), _
-            calcedLower, calcedUpper, calcedActual, calcedConsumed
-
     Else
         ' 子どもがいる場合
         Dim childrenArray() As String
         Dim childLine As Variant
-        Dim sumPoint(1 To PointBlockLen) As Variant
-        Dim sumRange As Range
         
-        Dim sum_of_delta_lower_square As Variant
-        Dim sum_of_delta_upper_square As Variant
-        Dim sum_of_middle As Variant
-        Dim sum_of_consumed As Variant
+        Dim childrenPoints As New Collection
         
         childrenArray = Split(thisChildren, ",")
         For Each childLine In childrenArray
-        
-            CalcPoints CLng(childLine) ' 再帰的に子どもの値を計算
-            Dim childPointRange As Range
             Dim childPoint() As Variant
-            Set childPointRange = RangeLevelPointBlock(CLng(childLine), CLng(thisLevel) + 1)
-            childPoint = GetPointBlock2(childPointRange)
-            
-            ' ' 子どもの合計値を計算 (単純和)
-            ' sumPoint(idxLower) = sumPoint(idxLower) + childPoint(idxLower)
-            ' sumPoint(idxUpper) = sumPoint(idxUpper) + childPoint(idxUpper)
-            ' sumPoint(idxActual) = sumPoint(idxActual) + childPoint(idxActual)
-            ' sumPoint(idxConsumed) = sumPoint(idxConsumed) + childPoint(idxConsumed)
+            childPoint = CalcPoints(CLng(childLine)) ' 再帰的に子どもの値を計算
+            childrenPoints.Add Item:=childPoint      ' 結果を childrenPoints に貯めていく
+        Next childLine
+                
+        calcedPoint = CalcPointLogicWithChildren(inputPoint, childrenPoints)
+        
+    End If
+    
+    SetPointBlock2 _
+        RangeLevelPointBlock(thisLine, CLng(thisLevel)), _
+        calcedPoint
+        
+    CalcPoints = calcedPoint
+    
+End Function
 
-            ' 子どもの合計値を計算 (２乗和平方根法:SRSS法:Square Root Sum of Squares)
+Function CalcPointLogicNoChild( _
+    inputPoint() As Variant _
+) As Variant
+
+    Dim calcedPoint(1 To PointBlockLen) As Variant
+
+    If inputPoint(idxActual) = "" Then
+        If Not IsEmpty(inputPoint(idxLower)) Or Not IsEmpty(inputPoint(idxUpper)) Then
+           calcedPoint(idxLower) = inputPoint(idxLower)
+            calcedPoint(idxUpper) = inputPoint(idxUpper)
+           calcedPoint(idxActual) = (inputPoint(idxLower) + inputPoint(idxUpper)) / 2
+        End If
+    Else
+        calcedPoint(idxLower) = inputPoint(idxActual)
+        calcedPoint(idxUpper) = inputPoint(idxActual)
+        calcedPoint(idxActual) = inputPoint(idxActual)
+    End If
+    calcedPoint(idxConsumed) = inputPoint(idxConsumed)
+    
+    CalcPointLogicNoChild = calcedPoint
+
+End Function
+
+
+Function CalcPointLogicWithChildren( _
+    inputPoint() As Variant, _
+    childrenPoints As Collection _
+) As Variant
+
+    Dim calcedPoint() As Variant
+
+    Dim sum_of_delta_lower_square As Variant
+    Dim sum_of_delta_upper_square As Variant
+    Dim sum_of_middle As Variant
+    Dim sum_of_consumed As Variant
+
+    Dim childPoint As Variant
+    For Each childPoint In childrenPoints
+
+        ' 子どもの合計値を計算 (２乗和平方根法:SRSS法:Square Root Sum of Squares)
+        If Not IsEmpty(childPoint(idxLower)) Or Not IsEmpty(childPoint(idxUpper)) _
+                Or Not IsEmpty(childPoint(idxActual)) Or Not IsEmpty(childPoint(idxConsumed)) Then
             sum_of_delta_lower_square = sum_of_delta_lower_square + (childPoint(idxActual) - childPoint(idxLower)) ^ 2
             sum_of_delta_upper_square = sum_of_delta_upper_square + (childPoint(idxUpper) - childPoint(idxActual)) ^ 2
             sum_of_middle = sum_of_middle + childPoint(idxActual)
             sum_of_consumed = sum_of_consumed + childPoint(idxConsumed)
-            
-        Next childLine
-        
-        sumPoint(idxLower) = sum_of_middle - Sqr(sum_of_delta_lower_square)
-        sumPoint(idxUpper) = sum_of_middle + Sqr(sum_of_delta_upper_square)
-        sumPoint(idxActual) = sum_of_middle
-        sumPoint(idxConsumed) = sum_of_consumed
-        
-        ' 子どもの合計値を書き込み
-        Set sumRange = RangeLevelPointBlock(CLng(thisLine), CLng(thisLevel))
-        SetPointBlock2 sumRange, sumPoint
-        
+        End If
+
+    Next childPoint
+
+    If Not IsEmpty(sum_of_delta_lower_square) Or Not IsEmpty(sum_of_delta_upper_square) _
+            Or Not IsEmpty(sum_of_middle) Or Not IsEmpty(sum_of_consumed) Then
+
+        ReDim calcedPoint(1 To PointBlockLen)
+        calcedPoint(idxLower) = sum_of_middle - Sqr(sum_of_delta_lower_square)
+        calcedPoint(idxUpper) = sum_of_middle + Sqr(sum_of_delta_upper_square)
+        calcedPoint(idxActual) = sum_of_middle
+        calcedPoint(idxConsumed) = sum_of_consumed
+
+    Else
+        calcedPoint = CalcPointLogicNoChild(inputPoint)
     End If
-    
-End Sub
+
+    CalcPointLogicWithChildren = calcedPoint
+End Function
+
 
 
 Sub CalcPointsTopLevel()
